@@ -1,23 +1,12 @@
 
-package cz.habarta.typescript.generator.spring;
+package cz.habarta.typescript.generator.parser;
 
 import cz.habarta.typescript.generator.KotlinUtils;
 import cz.habarta.typescript.generator.Settings;
 import cz.habarta.typescript.generator.TsType;
 import cz.habarta.typescript.generator.TypeProcessor;
 import cz.habarta.typescript.generator.TypeScriptGenerator;
-import cz.habarta.typescript.generator.parser.JaxrsApplicationParser;
-import cz.habarta.typescript.generator.parser.MethodParameterModel;
-import cz.habarta.typescript.generator.parser.PathTemplate;
-import cz.habarta.typescript.generator.parser.RestApplicationModel;
-import cz.habarta.typescript.generator.parser.RestApplicationParser;
-import cz.habarta.typescript.generator.parser.RestApplicationType;
-import cz.habarta.typescript.generator.parser.RestMethodModel;
-import cz.habarta.typescript.generator.parser.RestQueryParam;
-import cz.habarta.typescript.generator.parser.ReturnTypeModel;
-import cz.habarta.typescript.generator.parser.SourceType;
 import cz.habarta.typescript.generator.util.GenericsResolver;
-import cz.habarta.typescript.generator.util.Pair;
 import cz.habarta.typescript.generator.util.Utils;
 import static cz.habarta.typescript.generator.util.Utils.getInheritanceChain;
 import java.lang.reflect.Method;
@@ -32,7 +21,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import kotlin.Triple;
 import kotlin.reflect.KType;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -71,11 +59,11 @@ public class SpringApplicationParser extends RestApplicationParser {
                             final Class<?> cls = entry.getKey();
                             final TsType type = entry.getValue();
                             if (cls.isAssignableFrom(rawClass) && type != null) {
-                                return new TypeProcessor.Result(type, kType);
+                                return new Result(type, kType);
                             }
                         }
                         if (getDefaultExcludedClassNames().contains(rawClass.getName())) {
-                            return new TypeProcessor.Result(TsType.Any, kType);
+                            return new Result(TsType.Any, kType);
                         }
                     }
                     return null;
@@ -95,7 +83,7 @@ public class SpringApplicationParser extends RestApplicationParser {
     }
 
     @Override
-    public JaxrsApplicationParser.Result tryParse(SourceType<?> sourceType) {
+    public Result tryParse(SourceType<?> sourceType) {
         if (!(sourceType.type instanceof Class<?>)) {
             return null;
         }
@@ -111,7 +99,7 @@ public class SpringApplicationParser extends RestApplicationParser {
                     Thread.currentThread().setContextClassLoader(settings.classLoader);
                     final SpringApplicationHelper springApplicationHelper = new SpringApplicationHelper(settings.classLoader, cls);
                     final List<Class<?>> restControllers = springApplicationHelper.findRestControllers();
-                    return new JaxrsApplicationParser.Result(restControllers.stream()
+                    return new Result(restControllers.stream()
                         .map(controller -> new SourceType<Type>(controller, cls, "<scanned>"))
                         .collect(Collectors.toList())
                     );
@@ -127,10 +115,10 @@ public class SpringApplicationParser extends RestApplicationParser {
         final RestController controller = AnnotationUtils.findAnnotation(cls, RestController.class);
         if (controller != null) {
             TypeScriptGenerator.getLogger().verbose("Parsing Spring RestController: " + cls.getName());
-            final JaxrsApplicationParser.Result result = new JaxrsApplicationParser.Result();
+            final Result result = new Result();
             final RequestMapping requestMapping = AnnotatedElementUtils.findMergedAnnotation(cls, RequestMapping.class);
             final String path = requestMapping != null && requestMapping.path() != null ? requestMapping.path()[0] : null;
-            final JaxrsApplicationParser.ResourceContext context = new JaxrsApplicationParser.ResourceContext(cls, path);
+            final ResourceContext context = new ResourceContext(cls, path);
             parseController(result, context, cls);
             return result;
         }
@@ -186,7 +174,7 @@ public class SpringApplicationParser extends RestApplicationParser {
         }
     }
 
-    private void parseController(JaxrsApplicationParser.Result result, JaxrsApplicationParser.ResourceContext context, Class<?> controllerClass) {
+    private void parseController(Result result, ResourceContext context, Class<?> controllerClass) {
         // parse controller methods
         final List<Method> methods = getAllRequestMethods(controllerClass);
         methods.sort(Utils.methodComparator());
@@ -247,7 +235,7 @@ public class SpringApplicationParser extends RestApplicationParser {
     }
 
     // https://docs.spring.io/spring/docs/current/spring-framework-reference/web.html#mvc-ann-methods
-    private void parseControllerMethod(JaxrsApplicationParser.Result result, JaxrsApplicationParser.ResourceContext context, Class<?> controllerClass, Method method) {
+    private void parseControllerMethod(Result result, ResourceContext context, Class<?> controllerClass, Method method) {
         final RequestMapping requestMapping = AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class);
         if (requestMapping != null) {
 

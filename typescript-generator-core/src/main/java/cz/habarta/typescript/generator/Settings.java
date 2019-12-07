@@ -587,15 +587,13 @@ public class Settings {
                 factories.add(new JaxrsApplicationParser.Factory());
             }
             if (isGenerateSpring()) {
-                final String springClassName = "cz.habarta.typescript.generator.spring.SpringApplicationParser$Factory";
+                final String springClassName = "cz.habarta.typescript.generator.parser.SpringApplicationParser$Factory";
                 final Class<?> springClass;
                 try {
                     springClass = Class.forName(springClassName);
                 } catch (ClassNotFoundException e) {
                     throw new RuntimeException("'generateStringApplicationInterface' or 'generateStringApplicationClient' parameter "
-                            + "was specified but '" + springClassName + "' was not found. "
-                            + "Please add 'cz.habarta.typescript-generator:typescript-generator-spring' artifact "
-                            + "to typescript-generator plugin dependencies (not module dependencies).");
+                            + "was specified but '" + springClassName + "' was not found. ");
                 }
                 try {
                     final Object instance = springClass.getConstructor().newInstance();
